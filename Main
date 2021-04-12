@@ -1,0 +1,143 @@
+# coding=utf-8
+from pykeyboard import PyKeyboard
+from pymouse import PyMouse
+import time
+import pyHook
+import pythoncom
+import xlrd
+import xlwt
+import pyperclip
+from pynput import mouse, keyboard
+import threading
+import sys
+from openpyxl import Workbook, load_workbook
+import os
+import dxfgrabber
+
+
+#检验是否全是中文字符
+def is_all_chinese(strs):
+    for _char in strs:
+        if not '\u4e00' <= _char <= '\u9fa5':
+            return False
+    return True
+def GetExcelUrls(curDirUrl):
+    list=[]
+    dirlist=os.listdir(curDirUrl)
+    for url in dirlist:
+        if('.dxf') in url:
+            #list.append(curDirUrl+'\\'+url)
+            list.append(url)
+    return list
+
+
+def GetValueFromDxf(dxf_name):
+    dxf=dxfgrabber.readfile(dxf_name)
+
+    #in_list=['/','-']
+    out_list=['YJY','BYJ','WDZ','BTTRZ']
+
+    for l in dxf.entities:
+
+        isRight = False
+        if (l.dxftype == 'MTEXT'):
+            pass
+            #print(l.raw_text)
+
+        if (l.dxftype == "TEXT"):
+
+            #print(l.text)
+            text=l.text
+
+            for out in out_list:
+                if(out in text):
+                    isRight=False
+                else:
+                    isRight=True
+
+                if(len(text)==1):
+                    isRight=False
+                elif(len(text)==2):
+                    if(text[0]=='L' or text[1]=='v'):
+                        if(text[1].isnumeric()):
+                            isRight=False
+                elif (len(text) == 3):
+                    if (text[0] == 'L' or text[1] == 'v'):
+                        if (text[1].isnumeric() and text[2].isnumeric()):
+                            isRight = False
+                else:
+                    if(is_all_chinese(text.split())):
+                        isRight=False
+
+
+        if (isRight):
+            index = 0
+            isExist = text in typeList
+            for t in (typeList):
+                if (text == t):
+                    break
+                else:
+                    index = index + 1
+            if (isExist):
+                numList[index] = numList[index] + 1
+            else:
+                typeList.append(text)
+                numList.append(1)
+
+
+
+#excel
+def saveToExcel(name, type, number):
+    wb = load_workbook(filename=saveExcelUrl)
+    worksheet = wb.active
+    worksheet = wb['Sheet1']
+    global rowMaxCount
+    # print(rowMaxCount)
+    worksheet.cell(row=rowMaxCount + 1, column=2, value=name)
+    worksheet.cell(row=rowMaxCount + 1, column=3, value=type)
+    worksheet.cell(row=rowMaxCount + 1, column=4, value=number)
+
+
+    wb.save(saveExcelUrl)
+    rowMaxCount = rowMaxCount + 1
+def PreSave():
+    wb = load_workbook(filename=saveExcelUrl)
+    worksheet = wb.active
+    worksheet = wb['Sheet1']
+
+    # print(rowMaxCount)
+    worksheet.cell(row=1, column=1, value='1')
+    worksheet.cell(row=1, column=2, value='配电箱编号')
+    worksheet.cell(row=1, column=3, value='型  号  规  格')
+    worksheet.cell(row=1, column=4, value='数  量')
+
+    for i in range(2,200):
+        worksheet.cell(row=i, column=1, value=i)
+
+
+    wb.save(saveExcelUrl)
+
+saveExcelUrl = r'C:\Users\Administrator\Desktop\cad.xlsx'
+dxfFileUrl=r'C:\Users\Administrator\Desktop\dxf'
+PreSave()
+urls=GetExcelUrls(dxfFileUrl)
+rowMaxCount=1
+print('go，小心块状图')
+
+for url in urls:
+    typeList = []
+    numList = []
+
+    name=(str(url).split('.')[0])
+    GetValueFromDxf(dxfFileUrl+'\\'+url)
+    index=0
+    saveToExcel('','','箱子价格：')
+    for type in typeList:
+
+        saveToExcel(name,type,numList[index])
+        index=index+1
+    saveToExcel('','','总价格：')
+    saveToExcel('','','')
+
+
+print('完成！')
